@@ -357,7 +357,7 @@
     <div class="landing-logo" id="landing-logo" aria-label="TouYube"></div>
     <div id="landing-form">
       <input id="landing-input" type="text"
-        placeholder="Paste a YouTube URL or video ID..."
+        placeholder="Paste a YouTube URL, video ID, or channel..."
         onkeydown="if(event.key==='Enter')loadVideo(this.value)">
       <button class="land-btn" onclick="loadVideo(document.getElementById('landing-input').value)">Load</button>
     </div>
@@ -449,13 +449,30 @@
     return m ? m[1] : null;
   }
 
+  function extractChannelId(input) {
+    const patterns = [
+      /youtube\.com\/channel\/([^\/\?]+)/,
+      /youtube\.com\/c\/([^\/\?]+)/,
+      /youtube\.com\/user\/([^\/\?]+)/,
+      /youtube\.com\/@([^\/\?]+)/,
+      /^UC[a-zA-Z0-9_-]{22}/,
+      /^@[a-zA-Z0-9_-]+/
+    ];
+    for (let pattern of patterns) {
+      const match = input.match(pattern);
+      if (match) return match[1] || match[0];
+    }
+    return null;
+  }
+
   function loadVideo(raw) {
     raw = (raw || '').trim();
     if (!raw) { showPill('Paste a YouTube URL to get started.', true); return; }
-    const id = extractVideoId(raw);
     
-    // Check if it's neither a video ID nor a channel ID
-    if (!id && !raw.startsWith('UC')) { showPill("Couldn't find a video or channel ID.", true); return; }
+    const videoId = extractVideoId(raw);
+    const channelId = !videoId ? extractChannelId(raw) : null;
+    
+    if (!videoId && !channelId) { showPill("Couldn't find a video or channel ID.", true); return; }
 
     const landing = document.getElementById('landing');
     if (landing.style.display !== 'none') {
@@ -466,13 +483,11 @@
 
     document.getElementById('topbar-input').value = raw;
     
-    if (id) {
-      // Original video loading logic
-      document.getElementById('player-iframe').src = `https://www.youtubeeducation.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`;
-      addToHistory(id);
-    } else if (raw.startsWith('UC')) {
-      // ONLY the new channel iframe logic
-      document.getElementById('player-iframe').src = `https://www.youtube.com/embed/videoseries?list=UU${raw.replace('UC', '')}`;
+    if (videoId) {
+      document.getElementById('player-iframe').src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`;
+      addToHistory(videoId);
+    } else if (channelId) {
+      document.getElementById('player-iframe').src = `https://www.youtube.com/embed/videoseries?list=UU${channelId.replace('UC', '')}`;
     }
     
     showPill('Loaded', false);
