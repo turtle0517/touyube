@@ -463,7 +463,8 @@
     }
 
     document.getElementById('topbar-input').value = raw;
-    document.getElementById('player-iframe').src = `https://www.youtubeeducation.com/embed/${id}?autoplay=1&rel=0&modestbranding=1`;
+    // Add window.location.origin to the end of the URL template
+document.getElementById('player-iframe').src = `https://www.youtubeeducation.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`;
     addToHistory(id);
     showPill('Loaded', false);
   }
