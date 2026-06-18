@@ -453,7 +453,9 @@
     raw = (raw || '').trim();
     if (!raw) { showPill('Paste a YouTube URL to get started.', true); return; }
     const id = extractVideoId(raw);
-    if (!id) { showPill("Couldn't find a video ID.", true); return; }
+    
+    // Check if it's neither a video ID nor a channel ID
+    if (!id && !raw.startsWith('UC')) { showPill("Couldn't find a video or channel ID.", true); return; }
 
     const landing = document.getElementById('landing');
     if (landing.style.display !== 'none') {
@@ -463,9 +465,16 @@
     }
 
     document.getElementById('topbar-input').value = raw;
-    // Add window.location.origin to the end of the URL template
-document.getElementById('player-iframe').src = `https://www.youtubeeducation.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`;
-    addToHistory(id);
+    
+    if (id) {
+      // Original video loading logic
+      document.getElementById('player-iframe').src = `https://www.youtubeeducation.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`;
+      addToHistory(id);
+    } else if (raw.startsWith('UC')) {
+      // ONLY the new channel iframe logic
+      document.getElementById('player-iframe').src = `https://www.youtube.com/embed/videoseries?list=UU${raw.replace('UC', '')}`;
+    }
+    
     showPill('Loaded', false);
   }
 
