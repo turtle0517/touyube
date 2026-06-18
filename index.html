@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TouYube</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0f0f0f;
+    --bg2:      #1a1a1a;
+    --bg3:      #222;
+    --border:   #2a2a2a;
+    --border2:  #333;
+    --text:     #e8e8e8;
+    --text2:    #999;
+    --text3:    #555;
+    --accent:   #ff3c3c;
+    --accent2:  #cc2222;
+    --input-bg: #161616;
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: row; 
+  }
+
+  /* ── MAIN WRAPPER ── */
+  #main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ─────────────────────────────────────────
+     LANDING STATE  (shown before first video)
+  ───────────────────────────────────────── */
+  #landing {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    padding: 40px 20px;
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  #landing.hidden {
+    opacity: 0;
+    transform: translateY(-16px);
+    pointer-events: none;
+    position: absolute;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .landing-logo {
+    font-size: 48px;
+    font-weight: 800;
+    letter-spacing: -2px;
+    color: var(--accent);
+    user-select: none;
+  }
+
+  #landing-form {
+    display: flex;
+    width: 100%;
+    max-width: 560px;
+    gap: 8px;
+    animation: fadeUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.13s both;
+  }
+
+  #landing-input {
+    flex: 1;
+    background: var(--input-bg);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  #landing-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(255, 60, 60, 0.1);
+  }
+  #landing-input::placeholder { color: var(--text3); }
+
+  .land-btn {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .land-btn:hover { background: var(--accent2); }
+
+  /* ─────────────────────────────────────────
+     PLAYER STATE  (shown after first load)
+  ───────────────────────────────────────── */
+  #app {
+    display: none;
+    flex-direction: column;
+    height: 100%; 
+  }
+  #app.active { display: flex; }
+
+  /* Compact top bar */
+  #topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  #topbar-logo {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+    white-space: nowrap;
+    user-select: none;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  #topbar-logo span { color: var(--text2); font-weight: 400; }
+
+  #topbar-form {
+    display: flex;
+    flex: 1;
+    gap: 6px;
+  }
+
+  #topbar-input {
+    flex: 1;
+    background: var(--input-bg);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 6px 11px;
+    border-radius: 7px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  #topbar-input:focus   { border-color: var(--accent); }
+  #topbar-input::placeholder { color: var(--text3); }
+
+  .top-btn {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    padding: 6px 13px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .top-btn:hover { background: var(--accent2); }
+
+  /* Player main row */
+  #player-main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  /* ── HISTORY PANEL ── */
+  #history-panel {
+    width: 248px;
+    flex-shrink: 0;
+    background: var(--bg2);
+    border-right: 1px solid var(--border); 
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* This hides the panel entirely when history is empty */
+  #history-panel.hidden {
+    display: none;
+  }
+
+  #history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px 9px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #history-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+  #history-clear {
+    background: none;
+    border: 1px solid var(--border2);
+    color: var(--text3);
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  #history-clear:hover { border-color: var(--accent); color: var(--accent); }
+
+  #history-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px;
+  }
+  #history-list::-webkit-scrollbar { width: 3px; }
+  #history-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .h-empty {
+    padding: 24px 12px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text3);
+    line-height: 1.7;
+  }
+
+  .h-item {
+    display: flex;
+    gap: 8px;
+    padding: 7px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.12s;
+    margin-bottom: 2px;
+    border: 1px solid transparent;
+  }
+  .h-item:hover { background: var(--bg3); border-color: var(--border); }
+  .h-item.playing { background: var(--bg3); border-color: var(--accent); }
+
+  .h-thumb {
+    width: 80px;
+    height: 45px;
+    border-radius: 5px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--bg3);
+  }
+  .h-info { flex: 1; overflow: hidden; min-width: 0; }
+  .h-item-title {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 3px;
+  }
+  .h-channel {
+    font-size: 10px;
+    color: var(--text3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Player */
+  #player-wrap {
+    flex: 1;
+    position: relative;
+    background: #000;
+    overflow: hidden;
+    border-radius: 12px;
+  }
+
+  #player-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    position: absolute;
+    inset: 0;
+  }
+
+  /* Floating status pill (shared) */
+  .pill {
+    position: fixed;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: rgba(26, 26, 26, 0.93);
+    border: 1px solid var(--border2);
+    border-radius: 999px;
+    padding: 7px 18px;
+    font-size: 12px;
+    color: var(--text2);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    backdrop-filter: blur(8px);
+    max-width: 90vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    z-index: 100;
+  }
+  .pill.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  .pill.error { border-color: var(--accent); color: #ff7070; }
+
+  @media (max-width: 480px) {
+    .landing-logo { font-size: 36px; }
+    #landing-form { flex-direction: column; }
+    .land-btn { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div id="history-panel" class="hidden">
+  <div id="history-header">
+    <span id="history-title">History</span>
+    <button id="history-clear" onclick="clearHistory()">Clear</button>
+  </div>
+  <div id="history-list"></div>
+</div>
+
+<div id="main-content">
+  <div id="landing">
+    <div class="landing-logo" id="landing-logo" aria-label="TouYube"></div>
+    <div id="landing-form">
+      <input id="landing-input" type="text"
+        placeholder="Paste a YouTube URL or video ID..."
+        onkeydown="if(event.key==='Enter')loadVideo(this.value)">
+      <button class="land-btn" onclick="loadVideo(document.getElementById('landing-input').value)">Load</button>
+    </div>
+  </div>
+
+  <div id="app">
+    <div id="topbar">
+      <div id="topbar-logo" onclick="goHome()">Tou<span>Yube</span></div>
+      <div id="topbar-form">
+        <input id="topbar-input" type="text"
+          placeholder="Paste another URL..."
+          onkeydown="if(event.key==='Enter')loadVideo(this.value)">
+        <button class="top-btn" onclick="loadVideo(document.getElementById('topbar-input').value)">Load</button>
+      </div>
+    </div>
+    <div id="player-main">
+      <div id="player-wrap">
+        <iframe id="player-iframe"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="pill" class="pill"></div>
+
+<script>
+  const WORD = [
+    { char: 'T', gray: false }, { char: 'o', gray: false }, { char: 'u', gray: false },
+    { char: 'Y', gray: true  }, { char: 'u', gray: true  }, { char: 'b', gray: true  }, { char: 'e', gray: true  },
+  ];
+  const POOL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?#@$%&*+~';
+  const rnd  = () => POOL[Math.floor(Math.random() * POOL.length)];
+
+  function easeOutElastic(t) {
+    const c4 = (2 * Math.PI) / 3.8;
+    return t === 0 ? 0 : t === 1 ? 1 : Math.pow(2, -7 * t) * Math.sin((t * 9 - 0.9) * c4) + 1;
+  }
+  function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+  function buildLogo(animated) {
+    const logo = document.getElementById('landing-logo');
+    logo.innerHTML = '';
+    WORD.forEach(({ char, gray }, i) => {
+      const s = document.createElement('span');
+      s.style.cssText = `display:inline-block; color:${gray ? 'var(--text2)' : 'var(--accent)'}; font-weight:${gray ? '400' : '800'};`;
+      s.textContent = animated ? rnd() : char;
+      logo.appendChild(s);
+    });
+    if (!animated) return;
+    const spans = [...logo.children];
+    spans.forEach((span, i) => {
+      const baseAngle = i * 137.5 * (Math.PI / 180);
+      const angle = baseAngle + (Math.random() - 0.5) * 0.9;
+      const distance = 220 + Math.random() * 360;
+      const startX = Math.cos(angle) * distance;
+      const startY = Math.sin(angle) * distance;
+      const startRot = (1 + Math.random() * 1.5) * (Math.random() > 0.5 ? 1 : -1) * 360;
+      span.style.opacity = '0';
+      span.style.transform = `translate(${startX}px,${startY}px) rotate(${startRot}deg)`;
+      setTimeout(() => {
+        span.style.opacity = '1';
+        let scramTimer = setInterval(() => { span.textContent = rnd(); }, 88);
+        const t0 = performance.now();
+        function tick(now) {
+          const t = Math.min((now - t0) / (3500 - (i * 160)), 1);
+          const posE = easeOutElastic(t);
+          const rotE = easeOutCubic(Math.min(t * 1.25, 1));
+          if (t >= 0.72) {
+            clearInterval(scramTimer);
+            span.textContent = WORD[i].char;
+            if (i === WORD.length - 1) span.style.color = '#f5c800';
+          }
+          span.style.transform = `translate(${startX * (1 - posE)}px,${startY * (1 - posE)}px) rotate(${startRot * (1 - rotE)}deg)`;
+          if (t < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+      }, i * 160);
+    });
+  }
+
+  buildLogo(!window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  function extractVideoId(raw) {
+    const s = raw.trim();
+    if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
+    const m = s.match(/(?:v=|\/embed\/|\/shorts\/|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    return m ? m[1] : null;
+  }
+
+  function loadVideo(raw) {
+    raw = (raw || '').trim();
+    if (!raw) { showPill('Paste a YouTube URL to get started.', true); return; }
+    const id = extractVideoId(raw);
+    if (!id) { showPill("Couldn't find a video ID.", true); return; }
+
+    const landing = document.getElementById('landing');
+    if (landing.style.display !== 'none') {
+      landing.classList.add('hidden');
+      setTimeout(() => { landing.style.display = 'none'; }, 260);
+      document.getElementById('app').classList.add('active');
+    }
+
+    document.getElementById('topbar-input').value = raw;
+    document.getElementById('player-iframe').src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&modestbranding=1`;
+    addToHistory(id);
+    showPill('Loaded', false);
+  }
+
+  function goHome() {
+    document.getElementById('app').classList.remove('active');
+    const landing = document.getElementById('landing');
+    landing.style.display = '';
+    requestAnimationFrame(() => landing.classList.remove('hidden'));
+    document.getElementById('player-iframe').src = '';
+    buildLogo(false);
+  }
+
+  let pillTimer;
+  function showPill(msg, isError) {
+    const el = document.getElementById('pill');
+    el.textContent = msg;
+    el.className = 'pill show' + (isError ? ' error' : '');
+    clearTimeout(pillTimer);
+    pillTimer = setTimeout(() => { el.className = 'pill'; }, 4000);
+  }
+
+  const HISTORY_KEY = 'touyube_history';
+  let videoHistory = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+  window.addEventListener('DOMContentLoaded', renderHistory);
+
+  async function fetchVideoData(id) {
+    try {
+      const res = await fetch(`https://noembed.com/embed?dataType=json&url=https://www.youtube.com/watch?v=${id}`);
+      const data = await res.json();
+      return { title: data.title || 'Unknown', channel: data.author_name || 'Unknown' };
+    } catch { return { title: `Video ID: ${id}`, channel: 'Unknown' }; }
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('history-list');
+    const panel = document.getElementById('history-panel');
+    if (!list || !panel) return;
+
+    // Toggle panel visibility based on whether history is empty
+    if (videoHistory.length === 0) {
+      panel.classList.add('hidden');
+      list.innerHTML = '';
+    } else {
+      panel.classList.remove('hidden');
+      list.innerHTML = '';
+      videoHistory.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'h-item';
+        div.onclick = () => loadVideo(item.id);
+        div.innerHTML = `<img class="h-thumb" src="${item.thumbnail}"><div class="h-info"><div class="h-item-title">${item.title}</div><div class="h-channel">${item.channel}</div></div>`;
+        list.appendChild(div);
+      });
+    }
+  }
+
+  function clearHistory() {
+    videoHistory = [];
+    localStorage.removeItem(HISTORY_KEY);
+    renderHistory();
+    showPill("History cleared", false);
+  }
+
+  async function addToHistory(id) {
+    videoHistory = videoHistory.filter(v => v.id !== id);
+    videoHistory.unshift({ id, title: 'Loading...', channel: '...', thumbnail: `https://img.youtube.com/vi/${id}/mqdefault.jpg` });
+    renderHistory();
+    const info = await fetchVideoData(id);
+    const index = videoHistory.findIndex(v => v.id === id);
+    if (index !== -1) {
+      videoHistory[index].title = info.title;
+      videoHistory[index].channel = info.channel;
+      if (videoHistory.length > 20) videoHistory = videoHistory.slice(0, 20);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(videoHistory));
+      renderHistory();
+    }
+  }
+</script>
+</body>
+</html>
