@@ -8,16 +8,16 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg:       #0f0f0f;
-    --bg2:      #1a1a1a;
-    --bg3:      #222;
-    --border:   #2a2a2a;
-    --border2:  #333;
-    --text:     #e8e8e8;
-    --text2:    #999;
-    --text3:    #555;
-    --accent:   #ff3c3c;
-    --accent2:  #cc2222;
+    --bg:        #0f0f0f;
+    --bg2:       #1a1a1a;
+    --bg3:       #222;
+    --border:    #2a2a2a;
+    --border2:   #333;
+    --text:      #e8e8e8;
+    --text2:     #999;
+    --text3:     #555;
+    --accent:    #ff3c3c;
+    --accent2:   #cc2222;
     --input-bg: #161616;
   }
 
@@ -41,7 +41,7 @@
   }
 
   /* ─────────────────────────────────────────
-     LANDING STATE  (shown before first video)
+      LANDING STATE  (shown before first video)
   ───────────────────────────────────────── */
   #landing {
     flex: 1;
@@ -114,7 +114,7 @@
   .land-btn:hover { background: var(--accent2); }
 
   /* ─────────────────────────────────────────
-     PLAYER STATE  (shown after first load)
+      PLAYER STATE  (shown after first load)
   ───────────────────────────────────────── */
   #app {
     display: none;
@@ -299,14 +299,6 @@
     border-radius: 12px;
   }
 
-  #player-iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-    position: absolute;
-    inset: 0;
-  }
-
   /* Floating status pill (shared) */
   .pill {
     position: fixed;
@@ -375,9 +367,7 @@
     </div>
     <div id="player-main">
       <div id="player-wrap">
-        <iframe id="player-iframe"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowfullscreen></iframe>
+        <div id="player-target"></div>
       </div>
     </div>
   </div>
@@ -386,6 +376,16 @@
 <div id="pill" class="pill"></div>
 
 <script>
+  let ytPlayer = null;
+
+  // Asynchronously initialize official Iframe API runtime
+  (function() {
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+  })();
+
   const WORD = [
     { char: 'T', gray: false }, { char: 'o', gray: false }, { char: 'u', gray: false },
     { char: 'Y', gray: true  }, { char: 'u', gray: true  }, { char: 'b', gray: true  }, { char: 'e', gray: true  },
@@ -484,13 +484,57 @@
     document.getElementById('topbar-input').value = raw;
     
     if (videoId) {
-      document.getElementById('player-iframe').src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`;
-      addToHistory(videoId);
+      if (!ytPlayer) {
+        document.getElementById('player-wrap').innerHTML = '<div id="player-target"></div>';
+        ytPlayer = new YT.Player('player-target', {
+          height: '100%',
+          width: '100%',
+          videoId: videoId,
+          playerVars: {
+            'autoplay': 1,
+            'rel': 0,
+            'modestbranding': 1,
+            'origin': window.location.origin
+          },
+          events: {
+            'onReady': onPlayerReady,
+            'onError': onPlayerError
+          }
+        });
+      } else {
+        ytPlayer.loadVideoById(videoId);
+      }
     } else if (channelId) {
+      document.getElementById('player-wrap').innerHTML = '<iframe id="player-iframe" style="width:100%;height:100%;border:none;position:absolute;inset:0;"></iframe>';
       document.getElementById('player-iframe').src = `https://www.youtube.com/embed/videoseries?list=UU${channelId.replace('UC', '')}`;
+      ytPlayer = null;
     }
-    
-    showPill('Loaded', false);
+  }
+
+  function onPlayerReady(event) {
+    const activeId = event.target.getVideoData().video_id;
+    if (activeId) {
+      addToHistory(activeId);
+      showPill('Loaded', false);
+    }
+  }
+
+  function onPlayerError(event) {
+    if (event.data === 101 || event.data === 150) {
+      showPill('Blocked: Video matches restriction filters.', true);
+      
+      if (ytPlayer) {
+        if (typeof ytPlayer.stopVideo === 'function') ytPlayer.stopVideo();
+        ytPlayer.destroy();
+        ytPlayer = null;
+      }
+      
+      document.getElementById('player-wrap').innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--accent); background:#111; font-weight:600; font-size:14px; text-align:center; padding:20px;">
+          ⚠️ Content Blocked By Admin/Workspace Filters<br>
+          <span style="color:var(--text2); font-weight:400; font-size:12px; margin-top:6px;">This entry was omitted from logs.</span>
+        </div>`;
+    }
   }
 
   function goHome() {
@@ -498,7 +542,8 @@
     const landing = document.getElementById('landing');
     landing.style.display = '';
     requestAnimationFrame(() => landing.classList.remove('hidden'));
-    document.getElementById('player-iframe').src = '';
+    document.getElementById('player-wrap').innerHTML = '<div id="player-target"></div>';
+    ytPlayer = null;
     buildLogo(false);
   }
 
@@ -528,7 +573,6 @@
     const panel = document.getElementById('history-panel');
     if (!list || !panel) return;
 
-    // Toggle panel visibility based on whether history is empty
     if (videoHistory.length === 0) {
       panel.classList.add('hidden');
       list.innerHTML = '';
