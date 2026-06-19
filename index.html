@@ -405,42 +405,12 @@
     WORD.forEach(({ char, gray }, i) => {
       const s = document.createElement('span');
       s.style.cssText = `display:inline-block; color:${gray ? 'var(--text2)' : 'var(--accent)'}; font-weight:${gray ? '400' : '800'};`;
-      s.textContent = animated ? rnd() : char;
+      s.textContent = char;
       logo.appendChild(s);
-    });
-    if (!animated) return;
-    const spans = [...logo.children];
-    spans.forEach((span, i) => {
-      const baseAngle = i * 137.5 * (Math.PI / 180);
-      const angle = baseAngle + (Math.random() - 0.5) * 0.9;
-      const distance = 220 + Math.random() * 360;
-      const startX = Math.cos(angle) * distance;
-      const startY = Math.sin(angle) * distance;
-      const startRot = (1 + Math.random() * 1.5) * (Math.random() > 0.5 ? 1 : -1) * 360;
-      span.style.opacity = '0';
-      span.style.transform = `translate(${startX}px,${startY}px) rotate(${startRot}deg)`;
-      setTimeout(() => {
-        span.style.opacity = '1';
-        let scramTimer = setInterval(() => { span.textContent = rnd(); }, 88);
-        const t0 = performance.now();
-        function tick(now) {
-          const t = Math.min((now - t0) / (3500 - (i * 160)), 1);
-          const posE = easeOutElastic(t);
-          const rotE = easeOutCubic(Math.min(t * 1.25, 1));
-          if (t >= 0.72) {
-            clearInterval(scramTimer);
-            span.textContent = WORD[i].char;
-            if (i === WORD.length - 1) span.style.color = '#f5c800';
-          }
-          span.style.transform = `translate(${startX * (1 - posE)}px,${startY * (1 - posE)}px) rotate(${startRot * (1 - rotE)}deg)`;
-          if (t < 1) requestAnimationFrame(tick);
-        }
-        requestAnimationFrame(tick);
-      }, i * 160);
     });
   }
 
-  buildLogo(!window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  buildLogo(false);
 
   function extractVideoId(raw) {
     const s = raw.trim();
@@ -468,10 +438,10 @@
   function loadVideo(raw) {
     raw = (raw || '').trim();
     if (!raw) { showPill('Paste a YouTube URL to get started.', true); return; }
-    
+     
     const videoId = extractVideoId(raw);
     const channelId = !videoId ? extractChannelId(raw) : null;
-    
+     
     if (!videoId && !channelId) { showPill("Couldn't find a video or channel ID.", true); return; }
 
     const landing = document.getElementById('landing');
@@ -482,7 +452,7 @@
     }
 
     document.getElementById('topbar-input').value = raw;
-    
+     
     if (videoId) {
       if (!ytPlayer) {
         document.getElementById('player-wrap').innerHTML = '<div id="player-target"></div>';
@@ -528,13 +498,13 @@
   function onPlayerError(event) {
     if (event.data === 101 || event.data === 150) {
       showPill('Blocked: Video matches restriction filters.', true);
-      
+       
       if (ytPlayer) {
         if (typeof ytPlayer.stopVideo === 'function') ytPlayer.stopVideo();
         ytPlayer.destroy();
         ytPlayer = null;
       }
-      
+       
       document.getElementById('player-wrap').innerHTML = `
         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--accent); background:#111; font-weight:600; font-size:14px; text-align:center; padding:20px;">
           ⚠️ Content Blocked By Admin/Workspace Filters<br>
