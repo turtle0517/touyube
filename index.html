@@ -521,7 +521,7 @@
 
   function onPlayerError(event) {
     if (event.data === 101 || event.data === 150) {
-      showPill('Blocked: Video matches restriction filters.', true);
+      showPill('Content Blocked', true);
       
       if (ytPlayer) {
         if (typeof ytPlayer.stopVideo === 'function') ytPlayer.stopVideo();
@@ -531,8 +531,8 @@
       
       document.getElementById('player-wrap').innerHTML = `
         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--accent); background:#111; font-weight:600; font-size:14px; text-align:center; padding:20px;">
-          ⚠️ Content Blocked By Admin/Workspace Filters<br>
-          <span style="color:var(--text2); font-weight:400; font-size:12px; margin-top:6px;">This entry was omitted from logs.</span>
+          ⚠️ This video contains swearing.<br>
+          <span style="color:var(--text2); font-weight:400; font-size:12px; margin-top:6px;">Try another video.</span>
         </div>`;
     }
   }
