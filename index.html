@@ -498,6 +498,7 @@
           },
           events: {
             'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange,
             'onError': onPlayerError
           }
         });
@@ -512,10 +513,17 @@
   }
 
   function onPlayerReady(event) {
-    const activeId = event.target.getVideoData().video_id;
-    if (activeId) {
-      addToHistory(activeId);
-      showPill('Loaded', false);
+    showPill('Ready...', false);
+  }
+
+  function onPlayerStateChange(event) {
+    // YT.PlayerState.PLAYING (value: 1) is triggered when the actual video stream starts rendering and playing
+    if (event.data === YT.PlayerState.PLAYING) {
+      const activeId = event.target.getVideoData().video_id;
+      if (activeId) {
+        addToHistory(activeId);
+        showPill('Loaded & Watchable', false);
+      }
     }
   }
 
@@ -597,6 +605,9 @@
   }
 
   async function addToHistory(id) {
+    // Prevent duplicated items logging into visual history simultaneously
+    if (videoHistory.length > 0 && videoHistory[0].id === id) return;
+
     videoHistory = videoHistory.filter(v => v.id !== id);
     videoHistory.unshift({ id, title: 'Loading...', channel: '...', thumbnail: `https://img.youtube.com/vi/${id}/mqdefault.jpg` });
     renderHistory();
