@@ -377,6 +377,7 @@
 
 <script>
   let ytPlayer = null;
+  let blockFailsafeTimeout = null;
 
   // Asynchronously initialize official Iframe API runtime
   (function() {
@@ -465,6 +466,20 @@
     return null;
   }
 
+  function forceErrorState() {
+    showPill('Content Blocked', true);
+    if (ytPlayer) {
+      if (typeof ytPlayer.stopVideo === 'function') ytPlayer.stopVideo();
+      try { ytPlayer.destroy(); } catch(e){}
+      ytPlayer = null;
+    }
+    document.getElementById('player-wrap').innerHTML = `
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--accent); background:#111; font-weight:600; font-size:14px; text-align:center; padding:20px;">
+        ⚠️ This video contains swearing.<br>
+        <span style="color:var(--text2); font-weight:400; font-size:12px; margin-top:6px;">Try another video.</span>
+      </div>`;
+  }
+
   function loadVideo(raw) {
     raw = (raw || '').trim();
     if (!raw) { showPill('Paste a YouTube URL to get started.', true); return; }
@@ -483,7 +498,12 @@
 
     document.getElementById('topbar-input').value = raw;
     
+    clearTimeout(blockFailsafeTimeout);
+    
     if (videoId) {
+      // 4-second structural countdown fallback handles hard network request blocking
+      blockFailsafeTimeout = setTimeout(forceErrorState, 4000);
+
       if (!ytPlayer) {
         document.getElementById('player-wrap').innerHTML = '<div id="player-target"></div>';
         ytPlayer = new YT.Player('player-target', {
@@ -512,6 +532,7 @@
   }
 
   function onPlayerReady(event) {
+    clearTimeout(blockFailsafeTimeout);
     const activeId = event.target.getVideoData().video_id;
     if (activeId) {
       addToHistory(activeId);
@@ -521,23 +542,13 @@
 
   function onPlayerError(event) {
     if (event.data === 101 || event.data === 150) {
-      showPill('Content Blocked', true);
-      
-      if (ytPlayer) {
-        if (typeof ytPlayer.stopVideo === 'function') ytPlayer.stopVideo();
-        ytPlayer.destroy();
-        ytPlayer = null;
-      }
-      
-      document.getElementById('player-wrap').innerHTML = `
-        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--accent); background:#111; font-weight:600; font-size:14px; text-align:center; padding:20px;">
-          ⚠️ This video contains swearing.<br>
-          <span style="color:var(--text2); font-weight:400; font-size:12px; margin-top:6px;">Try another video.</span>
-        </div>`;
+      clearTimeout(blockFailsafeTimeout);
+      forceErrorState();
     }
   }
 
   function goHome() {
+    clearTimeout(blockFailsafeTimeout);
     document.getElementById('app').classList.remove('active');
     const landing = document.getElementById('landing');
     landing.style.display = '';
